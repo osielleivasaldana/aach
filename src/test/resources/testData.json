@@ -1,0 +1,114 @@
+{
+  "credentials":{
+      "portalUser": {
+          "user": "15231738-7",
+          "password": "Tecnova.2025"
+      },
+      "portalAdmin":{
+          "user": "15231738-P",
+          "password": "Maliche.1981"
+      },
+      "emanager":{
+        "user": "15231738-7",
+        "password": "Maliche.1981"
+    },
+      "sgu":{
+          "user": "15231738-A",
+          "password": "Maliche.1981"
+    }
+  },
+
+  "sissoap": {
+    "patente": {
+      "patente": "CPPH-81",
+      "siniestro": "16066332"
+      },
+    "rut": {
+      "rut": "70015730-K",
+      "compania": "70015730-K MUTUAL DE SEGUROS DE CHILE"
+    }
+  },
+  "sisgen": {
+      "rut": "70015730-K",
+      "patenteA": "FGYJ",
+      "patenteB": "67",
+      "resultadoRut": "MUTUAL DE SEGUROS DE CHILE",
+      "resultadoPatente": "Dañ.Veh.Mot. G1"
+
+  },
+  "esoap": {
+      "poliza": {
+          "poliza": "5506633",
+          "patente": "VV 6399"
+          },
+    "patente":{
+          "patenteA": "FGYJ",
+          "patenteB": "67",
+          "poliza": "69688421"
+        }
+  },
+  "scap": {
+    "fecInicioConsulta": "01/01/2020",
+    "resultadoEsperado": "Descargar Archivo Excel"
+  },
+  "scig": {
+    "fecInicioConsulta": "01/01/2020",
+    "resultadoEsperado": "Descargar Archivo Excel"
+  },
+  "srci": {
+      "rut": "13819544-9",
+      "patente": "HVDZ14"
+  },
+  "sgm":{
+    "carpeta": "TEST",
+    "libro": "QA",
+    "referencia": "Referencia creada con prueba automatizada",
+    "responsableTecnico": "ORELLANA LABRAÑA, JUAN ANDRES",
+    "responsableTecnicoFinal": "ORELLANA LABRAÑA, JUAN ANDRES",
+    "resultadoEsperado": "SE HAN PROCESADO 1 REGISTROS. 1 EXITOSAMENTE."
+  },
+  "sisvf": {
+      "rut": "120020226",
+      "apellidoPaterno": "BASTÍAS",
+      "apellidoMaterno": "CASTILLO",
+      "nombres": "MIGUEL ANGEL",
+      "fecdef": "26/04/2014",
+      "fecnac": "30/05/1967"
+  },
+  "reunion": {
+      "comite": "DRP PRUEBAS",
+      "asunto": "ESTA REUNION ES CREADA AUTOMATICAMENTE",
+      "ubicacion": "Santiago",
+      "horaInicio": "09:00",
+      "horaTermino": "10:00",
+      "desc": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse ac ultrices nunc, sed elementum nisl. Aenean vitae lectus massa. Vivamus sollicitudin porttitor enim at luctus. Vivamus non felis ut ligula suscipit faucibus. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Vestibulum pellentesque orci in gravida egestas. Cras fringilla scelerisque lectus feugiat faucibus. Praesent mattis turpis sapien. Quisque at tellus eget risus ullamcorper hendrerit. Cras luctus hendrerit dapibus. Proin facilisis, arcu ullamcorper ornare ultricies, tortor sapien elementum augue, non cursus augue quam eget mi. Morbi consectetur vitae eros eu lacinia.",
+      "documentos": {
+          "comite": "DRP PRUEBAS",
+          "reunion": "ESTA REUNION ES CREADA AUTOMATICAMENTE",
+          "documento":"documentoPruebaAutomatizada.pdf",
+          "tipo": {
+              "doc1": "Tabla",
+              "doc2": "Minuta",
+              "doc3": "Documento",
+              "doc4": "Asistencia"
+          },
+            "autor": "OSIEL LEIVA"
+    }
+  },
+
+  "emanager":{
+        "archivo": {
+          "titulo": "Este es un archivo de pruebas",
+          "desc": "Esta es la descripción del archivo de pruebas",
+          "materia": "Proyectos",
+          "prensa": "Central",
+          "archivo": "archivo-emanager-test.pdf"
+        },
+       "normativa": {
+         "nombre":"Normativa generada automáticamente",
+         "materia": "Aquí se debe especificar cual es la materia a tratar en el borrador de norma, esto es una prueba automatizada",
+         "archivo": "borrador-de-norma-test.pdf",
+         "resultado": "PROYECTO AGREGADO!!"
+       }
+  }
+}

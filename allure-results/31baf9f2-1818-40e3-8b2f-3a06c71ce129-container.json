@@ -1,0 +1,1 @@
+{"uuid":"31baf9f2-1818-40e3-8b2f-3a06c71ce129","name":"TestFlujoComite","children":["a3beaa98-717c-4acc-9401-da54a10c7a42"],"befores":[{"name":"globalSetUp","status":"passed","stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1741209907063,"stop":1741209908572}],"afters":[],"start":1741209907031,"stop":1741209912771}

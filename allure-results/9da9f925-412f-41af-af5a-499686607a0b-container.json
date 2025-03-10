@@ -1,0 +1,1 @@
+{"uuid":"9da9f925-412f-41af-af5a-499686607a0b","name":"TestFlujoSisoap","children":["14399131-130d-4069-8ee3-ff2bc0d147b7","550e3485-0e6a-4273-9bfe-4ffc393d6e2d"],"befores":[{"name":"globalSetUp","status":"passed","stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1741201490122,"stop":1741201493033}],"afters":[],"start":1741201490085,"stop":1741201521007}

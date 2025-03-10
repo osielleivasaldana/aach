@@ -1,0 +1,183 @@
+trigger:
+  - main
+  - feature/*
+  - bugfix/*
+
+variables:
+  JAVA_VERSION: '21'
+  MAVEN_VERSION: '3.9.9'
+  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
+  HEADLESS: 'true'
+  TEST_FILTER: ''
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildAndTest
+    steps:
+    # (1) Instalar grep con soporte PCRE (por si no está disponible)
+    - script: |
+        sudo apt-get update
+        sudo apt-get install -y grep
+      displayName: 'Install grep with PCRE support'
+
+    - task: JavaToolInstaller@0
+      inputs:
+        versionSpec: '$(JAVA_VERSION)'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+      displayName: 'Install Java $(JAVA_VERSION)'
+
+    # (2) [Opcional] Obtener Test Cases del Test Plan si se inicia desde "TestRun"
+    - task: Bash@3
+      displayName: 'Obtener métodos de prueba del Test Plan'
+      inputs:
+        targetType: 'inline'
+        script: |
+          sudo apt-get install -y jq
+          
+          if [ "$(Build.Reason)" != "TestRun" ]; then
+            echo "Ejecución no iniciada desde Test Plan - Se ejecutarán todos los tests"
+            exit 0
+          fi
+
+          TEST_PLAN_ID=$(System.TestPlanId)
+          TEST_SUITE_ID=$(System.TestSuiteId)
+          
+          RESPONSE=$(curl -s -u :$SYSTEM_ACCESSTOKEN "https://dev.azure.com/$SYSTEM_TEAMPROJECT/$SYSTEM_TEAMPROJECT/_apis/testplan/Plans/$TEST_PLAN_ID/Suites/$TEST_SUITE_ID/TestCases?api-version=7.2-preview.1")
+          echo "$RESPONSE" > testcases.json
+          
+          TEST_METHODS=$(jq -r '.value[].fields["Microsoft.VSTS.TCM.AutomatedTestName"]' testcases.json | grep -v null | tr '\n' ',' | sed 's/,$//')
+          
+          if [ -n "$TEST_METHODS" ]; then
+            echo "##vso[task.setvariable variable=TEST_FILTER]-Dtest=$TEST_METHODS"
+            echo "Filtro de pruebas aplicado: $TEST_METHODS"
+          else
+            echo "No se encontraron métodos de prueba asociados - Se ejecutarán todos los tests"
+          fi
+      env:
+        SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+      condition: eq(variables['Build.Reason'], 'TestRun')
+
+    # (3) Ejecutar los tests con Maven
+    - task: Maven@4
+      inputs:
+        mavenPomFile: 'pom.xml'
+        mavenOptions: '-Xmx3072m'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.21'
+        jdkArchitectureOption: 'x64'
+        publishJUnitResults: true
+        testResultsFiles: '**/target/surefire-reports/*.xml'
+        goals: 'clean test'
+        options: >-
+          -U --batch-mode -e -X
+          -Dmaven.test.failure.ignore=true
+          -Dallure.results.directory=target/allure-results
+          $(TEST_FILTER)
+      env:
+        HEADLESS: 'true'
+      displayName: 'Maven Build and Test'
+
+    - script: |
+        sudo apt-get update
+        sudo apt-get install -y wget unzip
+        wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+        sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
+      displayName: 'Install Google Chrome for Selenium Tests'
+
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: 'target/surefire-reports'
+        artifact: 'SurefireReports'
+      displayName: 'Publish Surefire Reports Artifact'
+
+    - script: |
+        if [ -d "target/allure-results" ] && [ "$(ls -A target/allure-results)" ]; then
+          echo "Generando reporte de Allure..."
+          wget https://github.com/allure-framework/allure2/releases/download/2.29.0/allure-2.29.0.zip
+          unzip allure-2.29.0.zip
+          sudo mv allure-2.29.0 /opt/allure
+          export PATH=$PATH:/opt/allure/bin
+          allure generate target/allure-results --clean -o target/allure-report
+        else
+          echo "No se encontraron resultados de pruebas para Allure. Skipping..."
+          exit 0
+        fi
+      displayName: 'Generate Allure Report'
+      condition: succeededOrFailed()
+
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: 'target/allure-report'
+        artifact: 'AllureReport'
+      displayName: 'Publish Allure Report'
+      condition: succeededOrFailed()
+
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/target/surefire-reports/*.xml'
+        failTaskOnFailedTests: false
+      displayName: 'Publish Test Results to Azure DevOps'
+      condition: succeededOrFailed()
+
+    # (4) Mostrar resultado detallado de cada test y el mensaje de error si falló
+    - script: |
+        echo "=== Detalle de resultados de prueba (JUnit) ==="
+        # Buscar todos los archivos TEST-*.xml de Surefire
+        for file in $(find target/surefire-reports -name 'TEST-*.xml'); do
+          echo "Archivo: $file"
+          # parsear <testsuite name="...">
+          suiteName=$(grep -oP '(?<=<testsuite name=").*?(?=")' "$file" || true)
+          echo "TestSuite: $suiteName"
+
+          # Extraer cada bloque <testcase ... </testcase>
+          while IFS= read -r -d '' block; do
+            # Nombre del test
+            name=$(echo "$block" | grep -oP '(?<=name=").*?(?=")' || true)
+
+            # Buscar <failure ...> o <error ...>
+            failureBlock=$(echo "$block" | grep -oP '(?<=<failure ).*?(?=</failure>)' || true)
+            errorBlock=$(echo "$block" | grep -oP '(?<=<error ).*?(?=</error>)' || true)
+
+            if [ -n "$failureBlock" ] || [ -n "$errorBlock" ]; then
+              # FAILED
+              echo "FAILED: $name"
+              # Extraer mensaje
+              msg=$(echo "$failureBlock" | grep -oP '(?<=message=").*?(?=")' || true)
+              if [ -z "$msg" ]; then
+                msg=$(echo "$errorBlock" | grep -oP '(?<=message=").*?(?=")' || true)
+              fi
+              echo "   Error: $msg"
+            else
+              # PASSED
+              echo "PASSED: $name"
+            fi
+            echo
+          done < <(grep -Poz '(?s)<testcase.*?</testcase>' "$file" || true)
+        done
+      displayName: 'Show Detailed Test Results in Log'
+      condition: succeededOrFailed()
+
+- stage: PostBuildQualityChecks
+  jobs:
+  - job: CodeQuality
+    steps:
+    - task: JavaToolInstaller@0
+      inputs:
+        versionSpec: '$(JAVA_VERSION)'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+      displayName: 'Install Java $(JAVA_VERSION)'
+      
+    - task: Maven@4
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'checkstyle:checkstyle'
+      displayName: 'Run CheckStyle'
+      condition: succeededOrFailed()
+      continueOnError: true

@@ -1,0 +1,1 @@
+{"uuid":"c95793a3-0c49-4da0-b968-590e7ae76f1f","name":"TestFlujoScap","children":["41e66b81-b9d4-4f8b-8b50-9f37d229b40a"],"befores":[{"name":"globalSetUp","status":"passed","stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1741201895829,"stop":1741201896827}],"afters":[],"start":1741201895789,"stop":1741201904871}

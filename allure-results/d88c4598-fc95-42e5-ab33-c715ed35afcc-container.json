@@ -1,0 +1,1 @@
+{"uuid":"d88c4598-fc95-42e5-ab33-c715ed35afcc","name":"TestFlujoSisgen","children":["a656cb39-d918-49ee-a5ff-2bef7b0b5420","1d4123e5-47d7-4757-b785-a639e646c40b"],"befores":[{"name":"globalSetUp","status":"passed","stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1741202320180,"stop":1741202321149}],"afters":[],"start":1741202320145,"stop":1741202353317}
