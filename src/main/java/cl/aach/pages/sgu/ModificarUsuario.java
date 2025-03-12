@@ -4,6 +4,8 @@ import cl.aach.utils.ClickUtils;
 import cl.aach.utils.ConfigUtil;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -22,6 +24,8 @@ public class ModificarUsuario {
     // ==============================
     private static final String URL_SGU = ConfigUtil.getProperty("sgu.url");
     private static final Duration WAIT_TIMEOUT = Duration.ofSeconds(10);
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_WAIT_MS = 1000;
 
     // ==============================
     // Localizadores
@@ -42,6 +46,16 @@ public class ModificarUsuario {
     // ==============================
     private WebDriver driver;
     private WebDriverWait wait;
+    private boolean isDriverOwner; // Flag para saber si esta clase creó el driver
+
+    // ==============================
+    // Constructor con WebDriver existente (para usar con BaseTest)
+    // ==============================
+    public ModificarUsuario(WebDriver driver) {
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, WAIT_TIMEOUT);
+        this.isDriverOwner = false; // No somos dueños del driver
+    }
 
     // ==============================
     // Constructor
@@ -51,6 +65,7 @@ public class ModificarUsuario {
         WebDriverManager.chromedriver().setup();
         this.driver = new ChromeDriver(options);
         this.wait = new WebDriverWait(driver, WAIT_TIMEOUT);
+        this.isDriverOwner = true; // Somos dueños del driver
     }
 
     // ==============================
@@ -97,11 +112,73 @@ public class ModificarUsuario {
     }
 
     /**
+     * Método mejorado para hacer clic con manejo de elementos obsoletos
+     *
+     * @param by Localizador del elemento
+     * @return true si el clic fue exitoso, false en caso contrario
+     */
+    private boolean clickWithRetry(By by) {
+        int retryCount = 0;
+
+        while (retryCount < MAX_RETRIES) {
+            try {
+                // Espera a que el elemento sea clickeable
+                WebElement element = wait.until(ExpectedConditions.elementToBeClickable(by));
+
+                // Intenta primero con un clic normal
+                try {
+                    element.click();
+                    return true;
+                } catch (Exception e) {
+                    // Si falla, intenta con JavascriptExecutor
+                    JavascriptExecutor js = (JavascriptExecutor) driver;
+                    js.executeScript("arguments[0].scrollIntoView(true);", element);
+                    js.executeScript("arguments[0].click();", element);
+                    return true;
+                }
+            } catch (StaleElementReferenceException e) {
+                retryCount++;
+                System.out.println("Elemento obsoleto detectado, reintento " + retryCount);
+
+                // Espera antes de reintentar
+                try {
+                    Thread.sleep(RETRY_WAIT_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+
+            } catch (Exception e) {
+                retryCount++;
+                System.err.println("Error al hacer clic: " + e.getMessage());
+
+                // Espera antes de reintentar
+                try {
+                    Thread.sleep(RETRY_WAIT_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+
+        System.err.println("No se pudo hacer clic después de " + MAX_RETRIES + " intentos");
+        return false;
+    }
+
+    /**
      * Navega al submenú de gestión de usuarios.
      */
     public void clickSubMenu() {
-        WebElement boton = wait.until(ExpectedConditions.presenceOfElementLocated(BOTON_GESTION_USUARIOS));
-        ClickUtils.click(driver, boton);
+        // Espera a que la página cargue completamente después del login
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Usa el método mejorado para hacer clic
+        if (!clickWithRetry(BOTON_GESTION_USUARIOS)) {
+            throw new RuntimeException("No se pudo hacer clic en el botón de gestión de usuarios");
+        }
     }
 
     /**
@@ -110,8 +187,18 @@ public class ModificarUsuario {
      * @param rut El RUT del usuario a buscar.
      */
     public void buscarUsuario(String rut) {
-        wait.until(ExpectedConditions.presenceOfElementLocated(RUT_INPUT)).sendKeys(rut);
-        driver.findElement(BOTON_CONSULTAR).click();
+        // Asegúrate de que la página ha cargado
+        wait.until(ExpectedConditions.presenceOfElementLocated(RUT_INPUT));
+
+        // Limpia cualquier texto que pudiera estar presente
+        WebElement rutInput = driver.findElement(RUT_INPUT);
+        rutInput.clear();
+        rutInput.sendKeys(rut);
+
+        // Usa el método mejorado para hacer clic
+        if (!clickWithRetry(BOTON_CONSULTAR)) {
+            throw new RuntimeException("No se pudo hacer clic en el botón de consultar");
+        }
     }
 
     /**
@@ -120,12 +207,27 @@ public class ModificarUsuario {
      * @param cargo El nuevo cargo a asignar.
      */
     public void realizarModificacion(String cargo) {
-        WebElement modificar = wait.until(ExpectedConditions.presenceOfElementLocated(BOTON_MODIFICAR));
-        ClickUtils.click(driver, modificar);
+        // Espera a que los resultados de la búsqueda se carguen
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Usa el método mejorado para hacer clic en el botón modificar
+        if (!clickWithRetry(BOTON_MODIFICAR)) {
+            throw new RuntimeException("No se pudo hacer clic en el botón de modificar");
+        }
+
+        // Espera a que el formulario de modificación se cargue
         WebElement campoModificar = wait.until(ExpectedConditions.presenceOfElementLocated(CAMPO_A_MODIFICAR));
         campoModificar.clear();
         campoModificar.sendKeys(cargo);
-        driver.findElement(BOTON_MODIFICAR_CAMPO).click();
+
+        // Usa el método mejorado para hacer clic en el botón de guardar modificación
+        if (!clickWithRetry(BOTON_MODIFICAR_CAMPO)) {
+            throw new RuntimeException("No se pudo hacer clic en el botón de guardar modificación");
+        }
     }
 
     /**
@@ -134,14 +236,29 @@ public class ModificarUsuario {
      * @param mensaje El mensaje esperado.
      */
     public void validarResultado(String mensaje) {
-        WebElement resultLabel = wait.until(ExpectedConditions.presenceOfElementLocated(RESULTADO));
-        String actualText = resultLabel.getText();
-        if (actualText.equals(mensaje)) {
-            System.out.println("Validación exitosa: El texto coincide con el esperado: '" + actualText + "'");
-        } else {
-            String errorMessage = "Texto esperado: '" + mensaje + "', pero fue: '" + actualText + "'";
-            System.err.println(errorMessage);
-            throw new AssertionError(errorMessage);
+        // Espera más tiempo para el mensaje de resultado
+        WebDriverWait longWait = new WebDriverWait(driver, Duration.ofSeconds(15));
+
+        try {
+            WebElement resultLabel = longWait.until(ExpectedConditions.visibilityOfElementLocated(RESULTADO));
+            String actualText = resultLabel.getText();
+            if (actualText.equals(mensaje)) {
+                System.out.println("Validación exitosa: El texto coincide con el esperado: '" + actualText + "'");
+            } else {
+                String errorMessage = "Texto esperado: '" + mensaje + "', pero fue: '" + actualText + "'";
+                System.err.println(errorMessage);
+                throw new AssertionError(errorMessage);
+            }
+        } catch (StaleElementReferenceException e) {
+            // Si el elemento se vuelve obsoleto, intenta de nuevo
+            System.out.println("El elemento de resultado se volvió obsoleto, reintentando...");
+            // Espera un momento antes de reintentar
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
+            validarResultado(mensaje); // Reintentar recursivamente
         }
     }
 
@@ -149,8 +266,10 @@ public class ModificarUsuario {
      * Cierra el WebDriver.
      */
     public void close() {
-        if (driver != null) {
+        // Solo cerramos el driver si lo creamos en esta clase
+        if (driver != null && isDriverOwner) {
             driver.quit();
+            driver = null;
         }
     }
 }

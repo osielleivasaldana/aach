@@ -1,23 +1,36 @@
 package tests.comite;
 
+import cl.aach.annotations.UseLoginStrategy;
 import cl.aach.pages.comite.ComiteCrearReunion;
 import cl.aach.pages.comite.ComiteSubirDocumentos;
 import cl.aach.pages.comite.ComiteEliminarDocumentos;
 import cl.aach.utils.DateUtils;
+import cl.aach.utils.LoginStrategyFactory;
 import cl.aach.utils.TabManager;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
 import tests.BaseTest;
 
 @Epic("Comité")
 @Feature("Gestión de reuniones y documentos en Comité")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@ExtendWith(BaseTest.TestFailureWatcher.class) // Se extiende con el watcher para capturas
-public class
+@UseLoginStrategy(LoginStrategyFactory.LoginType.PORTAL) // Especificar estrategia de login explícitamente
+public class TestFlujoComite extends BaseTest {
 
-TestFlujoComite extends BaseTest {
+    private static TestFlujoComite currentTestInstance;
 
+    @BeforeAll
+    public static void iniciarFlujo() {
+        // Activamos el flujo continuo para mantener el WebDriver entre tests
+        startContinuousFlow();
+    }
+
+    @BeforeEach
+    public void saveInstance() {
+        // Guardar la instancia actual y asegurar el login
+        currentTestInstance = this;
+        performLogin(); // Realizamos el login explícitamente
+    }
 
     public void run() {
         TC21092_stepCrearReunion();
@@ -51,7 +64,7 @@ TestFlujoComite extends BaseTest {
 
     @Test
     @Order(2)
-        @Description("Subir un documento de tipo 'Tabla' al sistema Comité.")
+    @Description("Subir un documento de tipo 'Tabla' al sistema Comité.")
     @Severity(SeverityLevel.NORMAL)
     @DisplayName("tests.comite.TestFlujoComite.TC21121_stepSubirTabla")
     public void TC21121_stepSubirTabla() {
@@ -215,5 +228,16 @@ TestFlujoComite extends BaseTest {
     @Step("Cerrar la pestaña actual y volver a la original")
     private void cerrarPestana() {
         tabManager.closeAndReturnToOriginalTab();
+    }
+
+    @AfterAll
+    public static void finalizarFlujo() {
+        // Desactivar el flujo continuo
+        endContinuousFlow();
+
+        // Si hay una instancia actual, forzar cierre explícito del navegador
+        if (currentTestInstance != null) {
+            currentTestInstance.forceCloseDriver();
+        }
     }
 }

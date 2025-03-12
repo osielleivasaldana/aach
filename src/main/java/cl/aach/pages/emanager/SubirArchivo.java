@@ -1,39 +1,32 @@
 package cl.aach.pages.emanager;
 
 import cl.aach.utils.ConfigUtil;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
+/**
+ * Clase para subir archivos en el sistema eManager.
+ * Versión adaptada para trabajar con WebDriver proporcionado por BaseTest.
+ */
 public class SubirArchivo {
-
-    // ==============================
-    // Campos de instancia
-    // ==============================
-    private WebDriver driver;
-    private WebDriverWait wait;
 
     // ==============================
     // Constantes
     // ==============================
     private static final String URL_EMANAGER = ConfigUtil.getProperty("emanager.url");
+    private static final Duration WAIT_TIMEOUT = Duration.ofSeconds(10);
 
-    // Localizadores para login y navegación
+    // ==============================
+    // Localizadores
+    // ==============================
     private static final By USUARIO_INPUT = By.name("txUsuario");
     private static final By CLAVE_INPUT = By.name("txPassword");
     private static final By BOTON_INGRESAR = By.name("btnLogin");
@@ -54,42 +47,30 @@ public class SubirArchivo {
     private static final By BOTON_AGREGAR_EN_FORMULARIO = By.name("ctl00$ContentPlaceHolder1$Button1");
 
     // ==============================
-    // Constructor
+    // Campos de instancia
     // ==============================
-    public SubirArchivo() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        options.setExperimentalOption("useAutomationExtension", false);
-        options.addArguments("--disable-extensions");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-popup-blocking");
-        options.addArguments("--start-maximized");
-        options.addArguments("--disable-infobars");
-        options.addArguments("--disable-browser-side-navigation");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--disable-features=IsolateOrigins,site-per-process");
+    private WebDriver driver;
+    private WebDriverWait wait;
+    private boolean driverCreatedInternally;
 
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        options.setExperimentalOption("prefs", prefs);
+    // ==============================
+    // Constructores
+    // ==============================
 
-        // Agregar un directorio único para user-data-dir
-        try {
-            String uniqueProfile = Files.createTempDirectory("chrome_profile_" + UUID.randomUUID()).toString();
-            options.addArguments("--user-data-dir=" + uniqueProfile);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        WebDriverManager.chromedriver().setup();
-        this.driver = new ChromeDriver(options);
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+    /**
+     * Constructor que recibe un WebDriver ya configurado.
+     * Este es el constructor que se usará con la nueva arquitectura de BaseTest.
+     *
+     * @param driver WebDriver previamente configurado e inicializado.
+     */
+    public SubirArchivo(WebDriver driver) {
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, WAIT_TIMEOUT);
+        this.driverCreatedInternally = false;
     }
 
     // ==============================
-    // Métodos Públicos
+    // Métodos Principales
     // ==============================
 
     /**
@@ -116,8 +97,7 @@ public class SubirArchivo {
      */
     public void clickMenu() {
         WebElement consultasElement = wait.until(ExpectedConditions.visibilityOfElementLocated(BOTON_CONTENIDO));
-        Actions actions = new Actions(driver);
-        actions.moveToElement(consultasElement).perform();
+        new Actions(driver).moveToElement(consultasElement).perform();
         WebElement archivosElement = wait.until(ExpectedConditions.visibilityOfElementLocated(BOTON_ARCHIVO));
         archivosElement.click();
     }
@@ -198,10 +178,11 @@ public class SubirArchivo {
     }
 
     /**
-     * Cierra el WebDriver.
+     * Cierra el navegador.
+     * Este método solo cerrará el navegador si fue creado internamente por esta clase.
      */
     public void close() {
-        if (driver != null) {
+        if (driver != null && driverCreatedInternally) {
             driver.quit();
         }
     }

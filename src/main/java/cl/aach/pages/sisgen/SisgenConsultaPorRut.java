@@ -44,13 +44,41 @@ public class SisgenConsultaPorRut {
     // ==============================
 
     /**
-     * Inicia el sistema en el lanzador de aplicaciones, guardando la pestaña actual y abriendo una nueva.
+     * clickConsultor es el encargado de iniciar el sistema en el lanzador de aplicaciones.
+     * Captura y maneja alertas que puedan aparecer (por ejemplo, alertas de VPN).
+     *
+     * @return String - Mensaje de alerta capturado (si existe) o null si no hay alerta
      */
-    public void clickConsultor() {
-        tabManager.saveCurrentTab();
+    public String clickConsultor() {
+        String alertMessage = null;
+        tabManager.saveCurrentTab(); // Guarda la pestaña actual antes de abrir una nueva
+
         WebElement boton = wait.until(ExpectedConditions.presenceOfElementLocated(CONSULTOR_BUTTON));
         boton.click();
+
+        try {
+            // Configuramos un wait corto específicamente para alertas
+            WebDriverWait alertWait = new WebDriverWait(driver, Duration.ofSeconds(3));
+            alertWait.until(ExpectedConditions.alertIsPresent());
+
+            // Si llegamos aquí, existe una alerta
+            alertMessage = driver.switchTo().alert().getText();
+            System.out.println("⚠️ Alerta detectada: " + alertMessage);
+
+            // Aceptamos la alerta
+            driver.switchTo().alert().accept();
+
+            // Como apareció una alerta, no cambiamos de pestaña ya que probablemente falló la apertura
+            System.out.println("❌ No se pudo abrir el módulo. Posible causa: Se requiere VPN");
+            return alertMessage;
+        } catch (Exception e) {
+            // No hay alerta, continuamos con el flujo normal
+            System.out.println("✅ Módulo abierto correctamente");
+        }
+
+        // Si no hubo alerta, cambiamos a la nueva pestaña
         tabManager.switchToNewTab();
+        return alertMessage;
     }
 
     /**

@@ -1,0 +1,1 @@
+{"uuid":"88716548-93a1-4065-bc63-987de667e188","name":"TestFlujoScig","children":["8ea2fb5f-1f3d-4433-a83c-585178277b7d"],"befores":[{"name":"globalSetUp","status":"passed","stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1741724141201,"stop":1741724141701}],"afters":[],"start":1741724141185,"stop":1741724153377}

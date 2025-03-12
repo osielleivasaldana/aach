@@ -1,25 +1,17 @@
 package cl.aach.pages.sgu;
 
-import cl.aach.pages.LoginPage;
 import cl.aach.utils.ClickUtils;
-import cl.aach.utils.ConfigUtil;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import io.qameta.allure.Step;
 import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 public class ValidarEstadoSolicitud {
 
     // --- Constantes ---
-    private static final String URL_SERVER = ConfigUtil.getProperty("server.url");
     private static final Duration WAIT_TIMEOUT = Duration.ofSeconds(10);
 
     // --- Localizadores ---
@@ -37,42 +29,12 @@ public class ValidarEstadoSolicitud {
     private WebDriverWait wait;
 
     // --- Constructor ---
-    public ValidarEstadoSolicitud() {
-        ChromeOptions options = setupChromeOptions();
-        WebDriverManager.chromedriver().setup();
-        this.driver = new ChromeDriver(options);
+    public ValidarEstadoSolicitud(WebDriver driver) {
+        this.driver = driver;
         this.wait = new WebDriverWait(driver, WAIT_TIMEOUT);
     }
 
-    // --- Configuración del navegador ---
-    private ChromeOptions setupChromeOptions() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        options.setExperimentalOption("useAutomationExtension", false);
-        options.addArguments("--disable-extensions", "--no-sandbox", "--disable-popup-blocking");
-        options.addArguments("--start-maximized", "--disable-infobars", "--disable-browser-side-navigation");
-        options.addArguments("--disable-dev-shm-usage", "--disable-gpu");
-        options.addArguments("--disable-features=IsolateOrigins,site-per-process");
-
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        options.setExperimentalOption("prefs", prefs);
-        return options;
-    }
-
     // --- Métodos principales ---
-
-    @Step("Abrir URL del sistema")
-    public void abrirUrl() {
-        driver.get(URL_SERVER);
-    }
-
-    @Step("Realizar login en el sistema")
-    public void login() {
-        LoginPage loginPage = new LoginPage(driver);
-        loginPage.login("15231738-P", "Maliche.1981");
-    }
 
     @Step("Acceder a la gestión de solicitudes")
     public void gestionDeSolicitudes() {
@@ -131,14 +93,6 @@ public class ValidarEstadoSolicitud {
             throw new AssertionError("❌ ERROR: El elemento RESULTADO está presente, pero se esperaba que NO estuviera.");
         } catch (TimeoutException e) {
             System.out.println("✅ Validación exitosa: El elemento RESULTADO NO está presente, como se esperaba.");
-        }
-    }
-
-    // Método para cerrar el WebDriver
-    @Step("Cerrar el navegador")
-    public void close() {
-        if (driver != null) {
-            driver.quit();
         }
     }
 }

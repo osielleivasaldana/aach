@@ -1,18 +1,33 @@
 package tests.scig;
 
+import cl.aach.annotations.UseLoginStrategy;
 import cl.aach.pages.scig.ScigConsultas;
+import cl.aach.utils.LoginStrategyFactory;
 import cl.aach.utils.TabManager;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
 import tests.BaseTest;
 
 @Epic("SCIG")
 @Feature("Consultas en SCIG")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@ExtendWith(BaseTest.TestFailureWatcher.class) // Se extiende con el watcher para capturas
+@UseLoginStrategy(LoginStrategyFactory.LoginType.PORTAL) // Especificar estrategia por defecto (Portal)
 public class TestFlujoScig extends BaseTest {
 
+    private static TestFlujoScig currentTestInstance;
+
+    @BeforeAll
+    public static void iniciarFlujo() {
+        // Activamos el flujo continuo para mantener el WebDriver entre tests
+        startContinuousFlow();
+    }
+
+    @BeforeEach
+    public void saveInstance() {
+        // Guardar la instancia actual y asegurar el login
+        currentTestInstance = this;
+        performLogin(); // Realizamos el login explícitamente
+    }
 
     @Test
     @Order(1)
@@ -40,11 +55,17 @@ public class TestFlujoScig extends BaseTest {
         Allure.step("Pestaña guardada correctamente.");
     }
 
+
     @Step("Hacer clic en el consultor")
-    private void hacerClickEnConsultor(ScigConsultas consultas) {
-        consultas.clickConsultor();
-        Allure.step("Se hizo clic en el consultor.");
+    private void hacerClickEnConsultor(ScigConsultas consulta) {
+        String alertMessage = consulta.clickConsultor();
+        if (alertMessage != null) {
+            Allure.addAttachment("Alerta detectada", "text/plain", alertMessage);
+            Allure.step("Verificar acceso al módulo",
+                    () -> Assertions.fail("No se pudo acceder al módulo: " + alertMessage));
+        }
     }
+
 
     @Step("Buscar registros desde la fecha: {fecha}")
     private void buscarRegistros(ScigConsultas consultas, String fecha) {
@@ -62,5 +83,16 @@ public class TestFlujoScig extends BaseTest {
     private void cerrarPestana() {
         tabManager.closeAndReturnToOriginalTab();
         Allure.step("Pestaña cerrada y retorno a la original completado.");
+    }
+
+    @AfterAll
+    public static void finalizarFlujo() {
+        // Desactivar el flujo continuo
+        endContinuousFlow();
+
+        // Si hay una instancia actual, forzar cierre explícito del navegador
+        if (currentTestInstance != null) {
+            currentTestInstance.forceCloseDriver();
+        }
     }
 }

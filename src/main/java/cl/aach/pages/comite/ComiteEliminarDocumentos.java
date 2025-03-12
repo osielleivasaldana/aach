@@ -5,15 +5,12 @@ import cl.aach.utils.TabManager;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.Alert;
+import org.openqa.selenium.JavascriptExecutor;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.time.Duration;
-import java.util.UUID;
 
 public class ComiteEliminarDocumentos {
 
@@ -33,42 +30,12 @@ public class ComiteEliminarDocumentos {
     private TabManager tabManager;
 
     // ==============================
-    // Constructor que recibe un WebDriver existente
+    // Constructor
     // ==============================
     public ComiteEliminarDocumentos(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         this.tabManager = new TabManager(driver);
-    }
-
-    // ==============================
-    // Constructor sin parámetros que crea el WebDriver con un directorio único para el perfil
-    // ==============================
-    public ComiteEliminarDocumentos() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        options.setExperimentalOption("useAutomationExtension", false);
-        options.addArguments("--disable-extensions");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-popup-blocking");
-        options.addArguments("--start-maximized");
-        options.addArguments("--disable-infobars");
-        options.addArguments("--disable-browser-side-navigation");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--disable-features=IsolateOrigins,site-per-process");
-
-        // Agregar un directorio único para user-data-dir
-        try {
-            String uniqueProfile = Files.createTempDirectory("chrome_profile_" + UUID.randomUUID()).toString();
-            options.addArguments("--user-data-dir=" + uniqueProfile);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        this.driver = new ChromeDriver(options);
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        this.tabManager = new TabManager(driver);
     }
 
     // ==============================
@@ -77,12 +44,81 @@ public class ComiteEliminarDocumentos {
 
     /**
      * clickConsultor es el encargado de iniciar el sistema en el lanzador de aplicaciones.
+     * Maneja la apertura de una nueva pestaña y las posibles alertas.
      */
     public void clickConsultor() {
         tabManager.saveCurrentTab(); // Guarda la pestaña actual antes de abrir una nueva
-        WebElement boton = wait.until(ExpectedConditions.presenceOfElementLocated(CONSULTOR_BUTTON));
-        boton.click();
-        tabManager.switchToNewTab();
+        System.out.println("Pestaña guardada antes de hacer clic en consultor");
+
+        // Esperar a que el botón esté presente y sea visible
+        WebElement boton = wait.until(ExpectedConditions.visibilityOfElementLocated(CONSULTOR_BUTTON));
+        System.out.println("Botón 'consultor' localizado.");
+
+        // Verificar el número inicial de pestañas
+        int initialTabCount = driver.getWindowHandles().size();
+        System.out.println("Número de pestañas antes del clic: " + initialTabCount);
+
+        // Hacer clic en el botón
+        try {
+            boton.click();
+            System.out.println("Se hizo clic en el botón 'consultor'.");
+        } catch (Exception e) {
+            // Si falla el clic normal, intentar con JavaScript
+            try {
+                JavascriptExecutor js = (JavascriptExecutor) driver;
+                js.executeScript("arguments[0].click();", boton);
+                System.out.println("Se hizo clic en el botón 'consultor' usando JavaScript.");
+            } catch (Exception e2) {
+                System.err.println("Error al hacer clic en el botón 'consultor': " + e2.getMessage());
+                return;
+            }
+        }
+
+        // Verificar si aparece una alerta
+        try {
+            // Esperar brevemente por una alerta
+            WebDriverWait alertWait = new WebDriverWait(driver, Duration.ofSeconds(3));
+            alertWait.until(ExpectedConditions.alertIsPresent());
+
+            // Si hay una alerta, capturar su mensaje y aceptarla
+            Alert alert = driver.switchTo().alert();
+            String alertText = alert.getText();
+            System.out.println("Alerta detectada: " + alertText);
+            alert.accept();
+            System.out.println("Alerta aceptada.");
+
+            // No continuar con el cambio de pestaña
+            return;
+        } catch (Exception e) {
+            // No hay alerta, continuamos normalmente
+            System.out.println("No se detectó ninguna alerta.");
+        }
+
+        // Esperar un momento para que se abra la nueva pestaña
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Verificar si se abrió una nueva pestaña
+        int finalTabCount = driver.getWindowHandles().size();
+        System.out.println("Número de pestañas después del clic: " + finalTabCount);
+
+        if (finalTabCount > initialTabCount) {
+            // Se abrió una nueva pestaña, cambiar a ella
+            tabManager.switchToNewTab();
+            System.out.println("Cambio a la nueva pestaña realizado.");
+
+            // Esperar a que la nueva página cargue
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        } else {
+            System.err.println("ADVERTENCIA: No se abrió una nueva pestaña después del clic.");
+        }
     }
 
     /**

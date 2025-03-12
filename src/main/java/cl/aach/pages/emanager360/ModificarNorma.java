@@ -1,23 +1,19 @@
 package cl.aach.pages.emanager360;
 
 import cl.aach.utils.ConfigUtil;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
+/**
+ * Clase para modificar normativas en el sistema eManager 360.
+ * Versión adaptada para trabajar con WebDriver proporcionado por BaseTest.
+ */
 public class ModificarNorma {
 
     // ==============================
@@ -49,55 +45,28 @@ public class ModificarNorma {
     // ==============================
     private WebDriver driver;
     private WebDriverWait wait;
+    private boolean driverCreatedInternally;
 
     // ==============================
-    // Constructor
+    // Constructores
     // ==============================
-    public ModificarNorma() {
-        ChromeOptions options = configurarOpcionesChromeDriver();
-        WebDriverManager.chromedriver().setup();
-        this.driver = new ChromeDriver(options);
+
+    /**
+     * Constructor que recibe un WebDriver ya configurado.
+     * Este es el constructor que se usará con la nueva arquitectura de BaseTest.
+     *
+     * @param driver WebDriver previamente configurado e inicializado.
+     */
+    public ModificarNorma(WebDriver driver) {
+        this.driver = driver;
         this.wait = new WebDriverWait(driver, WAIT_TIMEOUT);
-    }
-
-    // ==============================
-    // Configuración del WebDriver
-    // ==============================
-    private ChromeOptions configurarOpcionesChromeDriver() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments(
-                "--disable-blink-features=AutomationControlled",
-                "--disable-extensions",
-                "--no-sandbox",
-                "--disable-popup-blocking",
-                "--start-maximized",
-                "--disable-infobars",
-                "--disable-browser-side-navigation",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--disable-features=IsolateOrigins,site-per-process"
-        );
-
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        options.setExperimentalOption("prefs", prefs);
-        options.setExperimentalOption("useAutomationExtension", false);
-
-        // Agregar un directorio único para user-data-dir
-        try {
-            String uniqueProfile = Files.createTempDirectory("chrome_profile_" + UUID.randomUUID()).toString();
-            options.addArguments("--user-data-dir=" + uniqueProfile);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return options;
+        this.driverCreatedInternally = false;
     }
 
     // ==============================
     // Métodos Principales
     // ==============================
+
     /**
      * Abre la URL del servicio eManager.
      */
@@ -146,6 +115,7 @@ public class ModificarNorma {
     // ==============================
     // Métodos Auxiliares
     // ==============================
+
     /**
      * Busca y retorna la fila de la tabla que contenga la normativa especificada.
      *
@@ -206,9 +176,10 @@ public class ModificarNorma {
 
     /**
      * Cierra el navegador.
+     * Este método solo cerrará el navegador si fue creado internamente por esta clase.
      */
     public void close() {
-        if (driver != null) {
+        if (driver != null && driverCreatedInternally) {
             driver.quit();
         }
     }

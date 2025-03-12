@@ -2,21 +2,19 @@ package cl.aach.pages.comite;
 
 import cl.aach.utils.TabManager;
 import org.openqa.selenium.By;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.Alert;
+import org.openqa.selenium.JavascriptExecutor;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.time.Duration;
 import java.util.List;
-import java.util.UUID;
 
 public class ComiteSubirDocumentos {
 
@@ -34,6 +32,8 @@ public class ComiteSubirDocumentos {
     private static final By UPLOAD_BUTTON = By.name("ctl00$body$DFiles");
     private static final By GUARDAR_BUTTON = By.id("body_btnSaveDocuments");
     private static final By RESULTADO_LABEL = By.xpath("//*[@id=\"body_GridViewDocuments\"]/tbody/tr[1]/td[4]");
+
+    // XPath para la tabla de documentos (usado en las validaciones)
     private static final By TABLA_DOCUMENTOS = By.xpath("//*[@id='body_GridViewDocuments']");
 
     // ==============================
@@ -42,9 +42,11 @@ public class ComiteSubirDocumentos {
     private WebDriver driver;
     private WebDriverWait wait;
     private TabManager tabManager;
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_WAIT_MS = 1000;
 
     // ==============================
-    // Constructor que recibe un WebDriver existente
+    // Constructor
     // ==============================
     public ComiteSubirDocumentos(WebDriver driver) {
         this.driver = driver;
@@ -53,44 +55,86 @@ public class ComiteSubirDocumentos {
     }
 
     // ==============================
-    // Constructor sin parámetros que crea el WebDriver con un directorio único para el perfil
-    // ==============================
-    public ComiteSubirDocumentos() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        options.setExperimentalOption("useAutomationExtension", false);
-        options.addArguments("--disable-extensions");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-popup-blocking");
-        options.addArguments("--start-maximized");
-        options.addArguments("--disable-infobars");
-        options.addArguments("--disable-browser-side-navigation");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--disable-features=IsolateOrigins,site-per-process");
-        try {
-            String uniqueProfile = Files.createTempDirectory("chrome_profile_" + UUID.randomUUID()).toString();
-            options.addArguments("--user-data-dir=" + uniqueProfile);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        this.driver = new ChromeDriver(options);
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        this.tabManager = new TabManager(driver);
-    }
-
-    // ==============================
     // Métodos públicos
     // ==============================
 
     /**
      * clickConsultor es el encargado de iniciar el sistema en el lanzador de aplicaciones.
+     * Maneja la apertura de una nueva pestaña y las posibles alertas.
      */
     public void clickConsultor() {
         tabManager.saveCurrentTab(); // Guarda la pestaña actual antes de abrir una nueva
-        WebElement boton = wait.until(ExpectedConditions.presenceOfElementLocated(CONSULTOR_BUTTON));
-        boton.click();
-        tabManager.switchToNewTab();
+        System.out.println("Pestaña guardada antes de hacer clic en consultor");
+
+        // Esperar a que el botón esté presente y sea visible
+        WebElement boton = wait.until(ExpectedConditions.visibilityOfElementLocated(CONSULTOR_BUTTON));
+        System.out.println("Botón 'consultor' localizado.");
+
+        // Verificar el número inicial de pestañas
+        int initialTabCount = driver.getWindowHandles().size();
+        System.out.println("Número de pestañas antes del clic: " + initialTabCount);
+
+        // Hacer clic en el botón
+        try {
+            boton.click();
+            System.out.println("Se hizo clic en el botón 'consultor'.");
+        } catch (Exception e) {
+            // Si falla el clic normal, intentar con JavaScript
+            try {
+                JavascriptExecutor js = (JavascriptExecutor) driver;
+                js.executeScript("arguments[0].click();", boton);
+                System.out.println("Se hizo clic en el botón 'consultor' usando JavaScript.");
+            } catch (Exception e2) {
+                System.err.println("Error al hacer clic en el botón 'consultor': " + e2.getMessage());
+                return;
+            }
+        }
+
+        // Verificar si aparece una alerta
+        try {
+            // Esperar brevemente por una alerta
+            WebDriverWait alertWait = new WebDriverWait(driver, Duration.ofSeconds(3));
+            alertWait.until(ExpectedConditions.alertIsPresent());
+
+            // Si hay una alerta, capturar su mensaje y aceptarla
+            Alert alert = driver.switchTo().alert();
+            String alertText = alert.getText();
+            System.out.println("Alerta detectada: " + alertText);
+            alert.accept();
+            System.out.println("Alerta aceptada.");
+
+            // No continuar con el cambio de pestaña
+            return;
+        } catch (Exception e) {
+            // No hay alerta, continuamos normalmente
+            System.out.println("No se detectó ninguna alerta.");
+        }
+
+        // Esperar un momento para que se abra la nueva pestaña
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Verificar si se abrió una nueva pestaña
+        int finalTabCount = driver.getWindowHandles().size();
+        System.out.println("Número de pestañas después del clic: " + finalTabCount);
+
+        if (finalTabCount > initialTabCount) {
+            // Se abrió una nueva pestaña, cambiar a ella
+            tabManager.switchToNewTab();
+            System.out.println("Cambio a la nueva pestaña realizado.");
+
+            // Esperar a que la nueva página cargue
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        } else {
+            System.err.println("ADVERTENCIA: No se abrió una nueva pestaña después del clic.");
+        }
     }
 
     /**
@@ -162,90 +206,96 @@ public class ComiteSubirDocumentos {
      */
     public void clickGuardarDocumento() {
         wait.until(ExpectedConditions.elementToBeClickable(GUARDAR_BUTTON)).click();
+        // Agregamos una pequeña pausa para dar tiempo a que la tabla se actualice
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * Método genérico para validar documentos de cualquier tipo
+     * Maneja excepciones StaleElementReferenceException con reintentos
+     *
+     * @param tipoPrefix Prefijo del tipo de documento (TBL, MIN, DOC, ASSI)
+     * @param tipoNombre Nombre descriptivo del tipo de documento
+     */
+    private void validarDocumento(String tipoPrefix, String tipoNombre) {
+        int retryCount = 0;
+
+        while (retryCount < MAX_RETRIES) {
+            try {
+                // Esperar a que la tabla esté presente y asegurarse de que está actualizada
+                WebElement tabla = wait.until(ExpectedConditions.refreshed(
+                        ExpectedConditions.presenceOfElementLocated(TABLA_DOCUMENTOS)));
+
+                List<WebElement> filas = tabla.findElements(By.xpath(".//tbody/tr"));
+                boolean encontrado = false;
+
+                for (WebElement fila : filas) {
+                    WebElement columnaArchivo = fila.findElement(By.xpath("./td[4]"));
+                    String textoArchivo = columnaArchivo.getText();
+                    if (textoArchivo.startsWith(tipoPrefix) &&
+                            textoArchivo.endsWith("documentoPruebaAutomatizada.pdf")) {
+                        System.out.println("Documento encontrado " + tipoNombre + ": " + textoArchivo);
+                        encontrado = true;
+                        break;
+                    }
+                }
+
+                if (!encontrado) {
+                    System.err.println("No se encontró ningún documento de tipo " + tipoNombre + ".");
+                }
+
+                // Si llegamos aquí sin excepción, salimos del bucle de reintentos
+                return;
+
+            } catch (StaleElementReferenceException e) {
+                retryCount++;
+                System.out.println("Reintento " + retryCount + " para validar documento " + tipoNombre +
+                        ": Elemento obsoleto detectado");
+
+                try {
+                    Thread.sleep(RETRY_WAIT_MS); // Espera breve antes de reintentar
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+
+                // Si hemos agotado todos los reintentos, lanzamos la excepción
+                if (retryCount >= MAX_RETRIES) {
+                    throw new RuntimeException("No se pudo validar el documento después de " +
+                            MAX_RETRIES + " intentos: " + e.getMessage(), e);
+                }
+            }
+        }
     }
 
     /**
      * validarDocumentoTabla recorre la tabla de documentos buscando el documento de tipo Tabla.
      */
     public void validarDocumentoTabla() {
-        // Se espera a que la tabla esté presente para obtener una referencia fresca
-        WebElement tabla = wait.until(ExpectedConditions.presenceOfElementLocated(TABLA_DOCUMENTOS));
-        List<WebElement> filas = tabla.findElements(By.xpath(".//tbody/tr"));
-        boolean encontrado = false;
-        for (WebElement fila : filas) {
-            WebElement columnaArchivo = fila.findElement(By.xpath("./td[4]"));
-            String textoArchivo = columnaArchivo.getText();
-            if (textoArchivo.startsWith("TBL") && textoArchivo.endsWith("documentoPruebaAutomatizada.pdf")) {
-                System.out.println("Documento encontrado Tabla: " + textoArchivo);
-                encontrado = true;
-                break;
-            }
-        }
-        if (!encontrado) {
-            System.err.println("No se encontró ningún documento de tipo Tabla.");
-        }
+        validarDocumento("TBL", "Tabla");
     }
 
     /**
      * validarDocumentoMinuta recorre la tabla de documentos buscando el documento de tipo Minuta.
      */
     public void validarDocumentoMinuta() {
-        WebElement tabla = wait.until(ExpectedConditions.presenceOfElementLocated(TABLA_DOCUMENTOS));
-        List<WebElement> filas = tabla.findElements(By.xpath(".//tbody/tr"));
-        boolean encontrado = false;
-        for (WebElement fila : filas) {
-            WebElement columnaArchivo = fila.findElement(By.xpath("./td[4]"));
-            String textoArchivo = columnaArchivo.getText();
-            if (textoArchivo.startsWith("MIN") && textoArchivo.endsWith("documentoPruebaAutomatizada.pdf")) {
-                System.out.println("Documento encontrado Minuta: " + textoArchivo);
-                encontrado = true;
-                break;
-            }
-        }
-        if (!encontrado) {
-            System.err.println("No se encontró ningún documento de tipo Minuta.");
-        }
+        validarDocumento("MIN", "Minuta");
     }
 
     /**
      * validarDocumentoDocumento recorre la tabla de documentos buscando el documento de tipo Documento.
      */
     public void validarDocumentoDocumento() {
-        WebElement tabla = wait.until(ExpectedConditions.presenceOfElementLocated(TABLA_DOCUMENTOS));
-        List<WebElement> filas = tabla.findElements(By.xpath(".//tbody/tr"));
-        boolean encontrado = false;
-        for (WebElement fila : filas) {
-            WebElement columnaArchivo = fila.findElement(By.xpath("./td[4]"));
-            String textoArchivo = columnaArchivo.getText();
-            if (textoArchivo.startsWith("DOC") && textoArchivo.endsWith("documentoPruebaAutomatizada.pdf")) {
-                System.out.println("Documento encontrado: " + textoArchivo);
-                encontrado = true;
-                break;
-            }
-        }
-        if (!encontrado) {
-            System.err.println("No se encontró ningún documento de tipo Documento.");
-        }
+        validarDocumento("DOC", "Documento");
     }
 
     /**
      * validarDocumentoAsistencia recorre la tabla de documentos buscando el documento de tipo Asistencia.
      */
     public void validarDocumentoAsistencia() {
-        WebElement tabla = wait.until(ExpectedConditions.presenceOfElementLocated(TABLA_DOCUMENTOS));
-        List<WebElement> filas = tabla.findElements(By.xpath(".//tbody/tr"));
-        boolean encontrado = false;
-        for (WebElement fila : filas) {
-            WebElement columnaArchivo = fila.findElement(By.xpath("./td[4]"));
-            String textoArchivo = columnaArchivo.getText();
-            if (textoArchivo.startsWith("ASSI") && textoArchivo.endsWith("documentoPruebaAutomatizada.pdf")) {
-                System.out.println("Documento Asistencia encontrado: " + textoArchivo);
-                encontrado = true;
-                break;
-            }
-        }
-        if (!encontrado) {
-            System.err.println("No se encontró ningún documento de tipo Asistencia.");
-        }
+        validarDocumento("ASSI", "Asistencia");
     }
 }

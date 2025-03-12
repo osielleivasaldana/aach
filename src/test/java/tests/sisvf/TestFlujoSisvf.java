@@ -1,24 +1,36 @@
 package tests.sisvf;
 
+import cl.aach.annotations.UseLoginStrategy;
 import cl.aach.models.TestData;
 import cl.aach.pages.sisvf.SisvfConsultaFecNacNombres;
 import cl.aach.pages.sisvf.SisvfConsultaRut;
 import cl.aach.pages.sisvf.SisvfConsultaNombres;
+import cl.aach.utils.LoginStrategyFactory;
 import cl.aach.utils.TabManager;
 import io.qameta.allure.*;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.*;
 import tests.BaseTest;
 
 @Epic("SISVF")
 @Feature("Consultas en SISVF")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@ExtendWith(BaseTest.TestFailureWatcher.class) // Se extiende con el watcher para capturas
+@UseLoginStrategy(LoginStrategyFactory.LoginType.PORTAL) // Especificar estrategia por defecto (Portal)
 public class TestFlujoSisvf extends BaseTest {
 
+    private static TestFlujoSisvf currentTestInstance;
+
+    @BeforeAll
+    public static void iniciarFlujo() {
+        // Activamos el flujo continuo para mantener el WebDriver entre tests
+        startContinuousFlow();
+    }
+
+    @BeforeEach
+    public void saveInstance() {
+        // Guardar la instancia actual y asegurar el login
+        currentTestInstance = this;
+        performLogin(); // Realizamos el login explícitamente
+    }
 
     @Test
     @Order(1)
@@ -153,5 +165,16 @@ public class TestFlujoSisvf extends BaseTest {
     private void cerrarPestana() {
         tabManager.closeAndReturnToOriginalTab();
         Allure.step("Pestaña cerrada y retorno a la original completado");
+    }
+
+    @AfterAll
+    public static void finalizarFlujo() {
+        // Desactivar el flujo continuo
+        endContinuousFlow();
+
+        // Si hay una instancia actual, forzar cierre explícito del navegador
+        if (currentTestInstance != null) {
+            currentTestInstance.forceCloseDriver();
+        }
     }
 }

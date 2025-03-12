@@ -1,0 +1,1 @@
+{"uuid":"6c99a242-5dcb-4426-a2bc-eb6af2d491c3","name":"TestFlujoSgu","children":["5ebd74ba-7d30-4c3c-b674-ff0483af4400"],"befores":[{"name":"globalSetUp","status":"passed","stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1741699792615,"stop":1741699793609}],"afters":[],"start":1741699792600,"stop":1741699798916}

@@ -1,26 +1,30 @@
 package tests.sgu;
 
-import cl.aach.models.TestData;
 import cl.aach.pages.sgu.AprobarSolicitud;
 import cl.aach.pages.sgu.ModificarUsuario;
 import cl.aach.pages.sgu.NuevaSolicitud;
 import cl.aach.pages.sgu.ValidarEstadoSolicitud;
-import cl.aach.utils.TestDataLoader;
+import cl.aach.utils.LoginStrategyFactory;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
 import tests.BaseTest;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Epic("SGU - Gestión de Solicitudes")
-@ExtendWith(BaseTest.TestFailureWatcher.class) // Se extiende con el watcher para capturas
-public class TestFlujoSgu {
+public class TestFlujoSgu extends BaseTest {
 
-    private static TestData testData;
+    private static TestFlujoSgu currentTestInstance;
 
     @BeforeAll
-    public static void setUp() {
-        testData = TestDataLoader.loadDefaultTestData();
+    public static void iniciarFlujo() {
+        // Activamos el flujo continuo para mantener el WebDriver entre tests
+        startContinuousFlow();
+    }
+
+    @BeforeEach
+    public void saveInstance() {
+        // Guardar la instancia actual para poder acceder a ella en métodos estáticos
+        currentTestInstance = this;
     }
 
     @Test
@@ -29,31 +33,26 @@ public class TestFlujoSgu {
     @Description("SGU - Nueva Solicitud para Activar el perfil DRP Pruebas")
     @Severity(SeverityLevel.NORMAL)
     public void testCrearNuevaSolicitud() {
-        NuevaSolicitud solicitud = new NuevaSolicitud();
-        try {
-            Allure.step("Abrir la URL del sistema SGU");
-            solicitud.abrirUrl();
+        // Usar la estrategia de login SGU
+        changeLoginStrategy(LoginStrategyFactory.LoginType.SGU);
+        performLogin();
 
-            Allure.step("Realizar login con usuario SGU");
-            solicitud.login(testData.credentials.sgu.user, testData.credentials.sgu.password);
+        NuevaSolicitud solicitud = new NuevaSolicitud(driver);
 
-            Allure.step("Acceder al submenú de gestión de usuarios");
-            solicitud.clickSubMenu();
+        Allure.step("Acceder al submenú de gestión de usuarios");
+        solicitud.clickSubMenu();
 
-            Allure.step("Buscar usuario con RUT: " + testData.credentials.portalAdmin.user);
-            solicitud.buscarUsuario(testData.credentials.portalAdmin.user);
+        Allure.step("Buscar usuario con RUT: " + testData.credentials.portalAdmin.user);
+        solicitud.buscarUsuario(testData.credentials.portalAdmin.user);
 
-            Allure.step("Especificar la solicitud de activación");
-            solicitud.especificarSolicitud();
+        Allure.step("Especificar la solicitud de activación");
+        solicitud.especificarSolicitud();
 
-            Allure.step("Enviar solicitud con observaciones");
-            solicitud.enviarSolicitud("Solicitud de Habilitación");
+        Allure.step("Enviar solicitud con observaciones");
+        solicitud.enviarSolicitud("Solicitud de Habilitación");
 
-            Allure.step("Validar mensaje de confirmación");
-            solicitud.validarResultado("La solicitud ha sido notificada.");
-        } finally {
-            solicitud.close();
-        }
+        Allure.step("Validar mensaje de confirmación");
+        solicitud.validarResultado("La solicitud ha sido notificada.");
     }
 
     @Test
@@ -62,22 +61,17 @@ public class TestFlujoSgu {
     @Description("SGU - Aprobar Solicitud para activar DRP Pruebas")
     @Severity(SeverityLevel.NORMAL)
     public void testAprobarSolicitud() {
-        AprobarSolicitud aprobar = new AprobarSolicitud();
-        try {
-            Allure.step("Abrir la URL del sistema SGU");
-            aprobar.abrirUrl();
+        // Cambiar a la estrategia de login Portal Admin
+        changeLoginStrategy(LoginStrategyFactory.LoginType.PORTAL_ADMIN);
+        performLogin();
 
-            Allure.step("Realizar login con usuario Admin");
-            aprobar.login(testData.credentials.portalAdmin.user, testData.credentials.portalAdmin.password);
+        AprobarSolicitud aprobar = new AprobarSolicitud(driver);
 
-            Allure.step("Acceder a la gestión de solicitudes");
-            aprobar.gestionDeSolicitudes();
+        Allure.step("Acceder a la gestión de solicitudes");
+        aprobar.gestionDeSolicitudes();
 
-            Allure.step("Autorizar solicitud");
-            aprobar.autorizarSolicitud();
-        } finally {
-            aprobar.close();
-        }
+        Allure.step("Autorizar solicitud");
+        aprobar.autorizarSolicitud();
     }
 
     @Test
@@ -86,26 +80,18 @@ public class TestFlujoSgu {
     @Description("SGU - Validar Estado de Solicitud para activar DRP Pruebas")
     @Severity(SeverityLevel.NORMAL)
     public void testValidarEstadoSolicitud() {
-        ValidarEstadoSolicitud validar = new ValidarEstadoSolicitud();
-        try {
-            Allure.step("Abrir la URL del sistema SGU");
-            validar.abrirUrl();
+        // Usar la estrategia de login Portal Admin (igual que en Aprobar Solicitud)
+        changeLoginStrategy(LoginStrategyFactory.LoginType.PORTAL_ADMIN);
+        performLogin();
 
-            Allure.step("Realizar login con usuario Admin");
-            validar.login();
+        ValidarEstadoSolicitud validar = new ValidarEstadoSolicitud(driver);
 
-            Allure.step("Acceder a la gestión de solicitudes y registrar última operación");
-            validar.gestionDeSolicitudes();
+        Allure.step("Acceder a la gestión de solicitudes y registrar última operación");
+        validar.gestionDeSolicitudes();
 
-            Allure.step("Validar que el estado de la solicitud es el esperado");
-            validar.validarResultado("DRP PRUEBAS");
-        } finally {
-            validar.close();
-        }
+        Allure.step("Validar que el estado de la solicitud es el esperado");
+        validar.validarResultado("DRP PRUEBAS");
     }
-
-
-    //Deshabilitacion de DRP Pruebas
 
     @Test
     @Order(4)
@@ -113,31 +99,26 @@ public class TestFlujoSgu {
     @Description("SGU - Solicitud para Deshabilitar el perfil DRP Pruebas")
     @Severity(SeverityLevel.NORMAL)
     public void testSolicitudDeshabilitar() {
-        NuevaSolicitud solicitud = new NuevaSolicitud();
-        try {
-            Allure.step("Abrir la URL del sistema SGU");
-            solicitud.abrirUrl();
+        // Usar la estrategia de login SGU
+        changeLoginStrategy(LoginStrategyFactory.LoginType.SGU);
+        performLogin();
 
-            Allure.step("Realizar login con usuario SGU");
-            solicitud.login(testData.credentials.sgu.user, testData.credentials.sgu.password);
+        NuevaSolicitud solicitud = new NuevaSolicitud(driver);
 
-            Allure.step("Acceder al submenú de gestión de usuarios");
-            solicitud.clickSubMenu();
+        Allure.step("Acceder al submenú de gestión de usuarios");
+        solicitud.clickSubMenu();
 
-            Allure.step("Buscar usuario con RUT: " + testData.credentials.portalAdmin.user);
-            solicitud.buscarUsuario(testData.credentials.portalAdmin.user);
+        Allure.step("Buscar usuario con RUT: " + testData.credentials.portalAdmin.user);
+        solicitud.buscarUsuario(testData.credentials.portalAdmin.user);
 
-            Allure.step("Especificar la solicitud de Deshabilitación");
-            solicitud.especificarSolicitud();
+        Allure.step("Especificar la solicitud de Deshabilitación");
+        solicitud.especificarSolicitud();
 
-            Allure.step("Enviar solicitud con observaciones");
-            solicitud.enviarSolicitud("Solicitud de deshabilitación");
+        Allure.step("Enviar solicitud con observaciones");
+        solicitud.enviarSolicitud("Solicitud de deshabilitación");
 
-            Allure.step("Validar mensaje de confirmación");
-            solicitud.validarResultado("La solicitud ha sido notificada.");
-        } finally {
-            solicitud.close();
-        }
+        Allure.step("Validar mensaje de confirmación");
+        solicitud.validarResultado("La solicitud ha sido notificada.");
     }
 
     @Test
@@ -146,22 +127,17 @@ public class TestFlujoSgu {
     @Description("SGU - Aprobar Solicitud para deshabilitar DRP Pruebas")
     @Severity(SeverityLevel.NORMAL)
     public void testAprobarSolicitudDeshabilitacion() {
-        AprobarSolicitud aprobar = new AprobarSolicitud();
-        try {
-            Allure.step("Abrir la URL del sistema SGU");
-            aprobar.abrirUrl();
+        // Cambiar a la estrategia de login Portal Admin
+        changeLoginStrategy(LoginStrategyFactory.LoginType.PORTAL_ADMIN);
+        performLogin();
 
-            Allure.step("Realizar login con usuario Admin");
-            aprobar.login(testData.credentials.portalAdmin.user, testData.credentials.portalAdmin.password);
+        AprobarSolicitud aprobar = new AprobarSolicitud(driver);
 
-            Allure.step("Acceder a la gestión de solicitudes");
-            aprobar.gestionDeSolicitudes();
+        Allure.step("Acceder a la gestión de solicitudes");
+        aprobar.gestionDeSolicitudes();
 
-            Allure.step("Autorizar solicitud de deshabilitación");
-            aprobar.autorizarSolicitud();
-        } finally {
-            aprobar.close();
-        }
+        Allure.step("Autorizar solicitud de deshabilitación");
+        aprobar.autorizarSolicitud();
     }
 
     @Test
@@ -170,25 +146,18 @@ public class TestFlujoSgu {
     @Description("SGU - Validar Estado de Solicitud para desactivar DRP Pruebas")
     @Severity(SeverityLevel.NORMAL)
     public void testValidarEstadoSolicitudDeshabilitacion() {
-        ValidarEstadoSolicitud validar = new ValidarEstadoSolicitud();
-        try {
-            Allure.step("Abrir la URL del sistema SGU");
-            validar.abrirUrl();
+        // Usar la estrategia de login Portal Admin (igual que en Aprobar Solicitud)
+        changeLoginStrategy(LoginStrategyFactory.LoginType.PORTAL_ADMIN);
+        performLogin();
 
-            Allure.step("Realizar login con usuario Admin");
-            validar.login();
+        ValidarEstadoSolicitud validar = new ValidarEstadoSolicitud(driver);
 
-            Allure.step("Acceder a la gestión de solicitudes y buscar la última operación");
-            validar.gestionDeSolicitudes();
+        Allure.step("Acceder a la gestión de solicitudes y buscar la última operación");
+        validar.gestionDeSolicitudes();
 
-            Allure.step("Validar que el estado de la solicitud ses Dehabilitado");
-            validar.validarResultado("DRP PRUEBAS");
-        } finally {
-            validar.close();
-        }
+        Allure.step("Validar que el estado de la solicitud es Deshabilitado");
+        validar.validarResultado("DRP PRUEBAS");
     }
-
-
 
     @Test
     @Order(7)
@@ -196,27 +165,33 @@ public class TestFlujoSgu {
     @Description("SGU - Modificar usuario en el sistema")
     @Severity(SeverityLevel.NORMAL)
     public void modificarUsuario() {
-        ModificarUsuario modificar = new ModificarUsuario();
-        try {
-            Allure.step("Abrir la URL del sistema SGU");
-            modificar.abrirUrl();
+        // Usar la estrategia de login SGU
+        changeLoginStrategy(LoginStrategyFactory.LoginType.SGU);
+        performLogin();
 
-            Allure.step("Realizar login con usuario SGU");
-            modificar.login(testData.credentials.sgu.user, testData.credentials.sgu.password);
+        ModificarUsuario modificar = new ModificarUsuario(driver);
 
-            Allure.step("Acceder al submenú de gestión de usuarios");
-            modificar.clickSubMenu();
+        Allure.step("Acceder al submenú de gestión de usuarios");
+        modificar.clickSubMenu();
 
-            Allure.step("Buscar usuario con RUT: " + testData.credentials.portalAdmin.user);
-            modificar.buscarUsuario(testData.credentials.portalAdmin.user);
+        Allure.step("Buscar usuario con RUT: " + testData.credentials.portalAdmin.user);
+        modificar.buscarUsuario(testData.credentials.portalAdmin.user);
 
-            Allure.step("Modificar información del usuario");
-            modificar.realizarModificacion("Este campo fue modificado con pruebas automatizadas");
+        Allure.step("Modificar información del usuario");
+        modificar.realizarModificacion("Este campo fue modificado con pruebas automatizadas");
 
-            Allure.step("Validar mensaje de confirmación");
-            modificar.validarResultado("Usuario modificado.");
-        } finally {
-            modificar.close();
+        Allure.step("Validar mensaje de confirmación");
+        modificar.validarResultado("Usuario modificado.");
+    }
+
+    @AfterAll
+    public static void finalizarFlujo() {
+        // Desactivar el flujo continuo
+        endContinuousFlow();
+
+        // Si hay una instancia actual, forzar cierre explícito del navegador
+        if (currentTestInstance != null) {
+            currentTestInstance.forceCloseDriver();
         }
     }
 }

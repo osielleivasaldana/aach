@@ -1,0 +1,1 @@
+{"uuid":"7b0e23e3-1e4e-4a27-b825-0684e57ddaed","name":"TestFlujo360","children":["8e8bb546-ea42-4067-a64e-5576e7288f7c"],"befores":[{"name":"globalSetUp","status":"passed","stage":"finished","steps":[],"attachments":[],"parameters":[],"start":1741636910834,"stop":1741636912043}],"afters":[],"start":1741636910818,"stop":1741636921254}

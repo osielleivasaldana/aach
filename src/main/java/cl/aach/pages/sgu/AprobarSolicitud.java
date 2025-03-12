@@ -1,28 +1,20 @@
 package cl.aach.pages.sgu;
 
-import cl.aach.pages.LoginPage;
 import cl.aach.utils.ClickUtils;
-import cl.aach.utils.ConfigUtil;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import io.qameta.allure.Step;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 
 public class AprobarSolicitud {
 
     // ==============================
     // Constantes
     // ==============================
-    private static final String URL_SERVER = ConfigUtil.getProperty("server.url");
     private static final Duration WAIT_TIMEOUT = Duration.ofSeconds(10);
 
     // ==============================
@@ -46,46 +38,14 @@ public class AprobarSolicitud {
     // ==============================
     // Constructor
     // ==============================
-    public AprobarSolicitud() {
-        ChromeOptions options = setupChromeOptions();
-        WebDriverManager.chromedriver().setup();
-        this.driver = new ChromeDriver(options);
+    public AprobarSolicitud(WebDriver driver) {
+        this.driver = driver;
         this.wait = new WebDriverWait(driver, WAIT_TIMEOUT);
-    }
-
-    // ==============================
-    // Configuración del Navegador
-    // ==============================
-    private ChromeOptions setupChromeOptions() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--disable-blink-features=AutomationControlled");
-        options.setExperimentalOption("useAutomationExtension", false);
-        options.addArguments("--disable-extensions", "--no-sandbox", "--disable-popup-blocking");
-        options.addArguments("--start-maximized", "--disable-infobars", "--disable-browser-side-navigation");
-        options.addArguments("--disable-dev-shm-usage", "--disable-gpu");
-        options.addArguments("--disable-features=IsolateOrigins,site-per-process");
-
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        options.setExperimentalOption("prefs", prefs);
-        return options;
     }
 
     // ==============================
     // Métodos Principales
     // ==============================
-
-    @Step("Abrir URL del servidor")
-    public void abrirUrl() {
-        driver.get(URL_SERVER);
-    }
-
-    @Step("Iniciar sesión en el sistema")
-    public void login(String usuario, String clave) {
-        LoginPage loginPage = new LoginPage(driver);
-        loginPage.login(usuario, clave);
-    }
 
     @Step("Navegar a la gestión de solicitudes")
     public void gestionDeSolicitudes() {
@@ -103,7 +63,6 @@ public class AprobarSolicitud {
         WebElement estadoElement = wait.until(ExpectedConditions.presenceOfElementLocated(ESTADO));
         String estadoTexto = estadoElement.getText().trim();
         if (!"Abierta".equalsIgnoreCase(estadoTexto)) {
-            close();
             throw new AssertionError("No hay solicitudes abiertas para aprobar. Estado actual: " + estadoTexto);
         }
     }
@@ -144,12 +103,5 @@ public class AprobarSolicitud {
         String actualText = resultLabel.getText();
         assert actualText.equals(expectedText) :
                 "Texto esperado: '" + expectedText + "', pero fue: '" + actualText + "'";
-    }
-
-    @Step("Cerrar navegador")
-    public void close() {
-        if (driver != null) {
-            driver.quit();
-        }
     }
 }

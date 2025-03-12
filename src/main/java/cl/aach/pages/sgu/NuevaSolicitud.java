@@ -1,25 +1,18 @@
 package cl.aach.pages.sgu;
 
 import cl.aach.utils.ClickUtils;
-import cl.aach.utils.ConfigUtil;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import io.qameta.allure.Step;
 import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 
 public class NuevaSolicitud {
 
     // ==============================
     // Constantes y Localizadores
     // ==============================
-    private static final String URL_SGU = ConfigUtil.getProperty("sgu.url");
     private static final Duration WAIT_TIMEOUT = Duration.ofSeconds(10);
 
     private static final By USUARIO_INPUT = By.id("loginUsuario");
@@ -43,51 +36,16 @@ public class NuevaSolicitud {
     private WebDriverWait wait;
 
     // ==============================
-    // Constructor y Configuración del Navegador
+    // Constructor
     // ==============================
-    public NuevaSolicitud() {
-        ChromeOptions options = setupChromeOptions();
-        WebDriverManager.chromedriver().setup();
-        this.driver = new ChromeDriver(options);
+    public NuevaSolicitud(WebDriver driver) {
+        this.driver = driver;
         this.wait = new WebDriverWait(driver, WAIT_TIMEOUT);
-    }
-
-    private ChromeOptions setupChromeOptions() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments(
-                "--disable-blink-features=AutomationControlled",
-                "--disable-extensions",
-                "--no-sandbox",
-                "--disable-popup-blocking",
-                "--start-maximized",
-                "--disable-infobars",
-                "--disable-browser-side-navigation",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--disable-features=IsolateOrigins,site-per-process"
-        );
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        options.setExperimentalOption("prefs", prefs);
-        return options;
     }
 
     // ==============================
     // Métodos Públicos
     // ==============================
-
-    @Step("Abrir URL de SGU")
-    public void abrirUrl() {
-        driver.get(URL_SGU);
-    }
-
-    @Step("Iniciar sesión con usuario: {0}")
-    public void login(String usuario, String clave) {
-        wait.until(ExpectedConditions.presenceOfElementLocated(USUARIO_INPUT)).sendKeys(usuario);
-        driver.findElement(CLAVE_INPUT).sendKeys(clave);
-        driver.findElement(BOTON_INGRESAR).click();
-    }
 
     @Step("Acceder al submenú de gestión de usuarios")
     public void clickSubMenu() {
@@ -144,10 +102,13 @@ public class NuevaSolicitud {
         assert actualText.equals(expectedText) : "Texto esperado: '" + expectedText + "', pero fue: '" + actualText + "'";
     }
 
-    @Step("Cerrar el navegador")
+
+    /**
+     * Cierra el navegador.
+     * Este método solo cerrará el navegador si fue creado internamente por esta clase.
+     */
     public void close() {
-        if (driver != null) {
             driver.quit();
-        }
+
     }
 }

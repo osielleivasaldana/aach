@@ -1,35 +1,38 @@
 package tests.emanagerArchivo;
 
+import cl.aach.annotations.UseLoginStrategy;
 import cl.aach.pages.emanager.EliminarArchivo;
 import cl.aach.pages.emanager.SubirArchivo;
 import cl.aach.pages.emanager.ValidarArchivo;
 import cl.aach.utils.DateUtils;
+import cl.aach.utils.LoginStrategyFactory;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
-import cl.aach.models.TestData;
-import cl.aach.utils.TestDataLoader;
-import org.junit.jupiter.api.extension.ExtendWith;
 import tests.BaseTest;
 
+/**
+ * Test para el flujo completo de gestión de archivos en eManager.
+ * Utiliza la estrategia de login de EMANAGER.
+ */
 @Epic("EMANAGER")
 @Feature("Gestión de Archivos en Emanager")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@ExtendWith(BaseTest.TestFailureWatcher.class) // Se extiende con el watcher para capturas
-public class TestFlujoEmanager {
+@UseLoginStrategy(LoginStrategyFactory.LoginType.EMANAGER) // Especificamos explícitamente la estrategia de login
+public class TestFlujoEmanager extends BaseTest {
 
-    private static TestData testData;
-
-    public TestFlujoEmanager() {
-        if (testData == null) {
-            testData = TestDataLoader.loadDefaultTestData();
-        }
-    }
-
+    private static TestFlujoEmanager currentTestInstance;
 
     @BeforeAll
-    public static void setUp() {
-        // Cargar datos de prueba usando TestDataLoader
-        testData = TestDataLoader.loadDefaultTestData();
+    public static void iniciarFlujo() {
+        // Activamos el flujo continuo para mantener el WebDriver entre tests
+        startContinuousFlow();
+    }
+
+    @BeforeEach
+    public void saveInstance() {
+        // Guardar la instancia actual y asegurar el login
+        currentTestInstance = this;
+        performLogin(); // Realizamos el login explícitamente
     }
 
     @Test
@@ -37,19 +40,15 @@ public class TestFlujoEmanager {
     @Description("EMANAGER - Subir Archivo")
     @Severity(SeverityLevel.CRITICAL)
     public void step_emanager_subir_archivo() {
-        SubirArchivo subirArchivo = new SubirArchivo();
-        abrirUrl(subirArchivo);
+        SubirArchivo subirArchivo = new SubirArchivo(driver);
 
         // Configurar la fecha dinámica (mañana)
         String fechaTermino = DateUtils.getTomorrowDate();
 
-        iniciarSesion(subirArchivo);
+        // Ya no necesitamos abrir URL ni hacer login, BaseTest ya lo hizo con la estrategia EMANAGER
 
         accederMenu(subirArchivo);
-
         completarFormularioSubirArchivo(subirArchivo, fechaTermino);
-
-        cerrarEmanager(subirArchivo);
     }
 
     @Test
@@ -57,16 +56,12 @@ public class TestFlujoEmanager {
     @Description("EMANAGER - Validar que archivo subió correctamente")
     @Severity(SeverityLevel.NORMAL)
     public void step_emanager_validar_archivo() {
-        ValidarArchivo validarArchivo = new ValidarArchivo();
-        abrirUrl(validarArchivo);
+        ValidarArchivo validarArchivo = new ValidarArchivo(driver);
 
-        iniciarSesion(validarArchivo);
+        // Ya no necesitamos abrir URL ni hacer login, BaseTest ya lo hizo
 
         accederMenu(validarArchivo);
-
         validarResultadoArchivo(validarArchivo);
-
-        cerrarEmanager(validarArchivo);
     }
 
     @Test
@@ -74,55 +69,15 @@ public class TestFlujoEmanager {
     @Description("EMANAGER - Eliminar archivo")
     @Severity(SeverityLevel.NORMAL)
     public void step_emanager_borrar_archivo() {
-        EliminarArchivo eliminarArchivo = new EliminarArchivo();
-        abrirUrl(eliminarArchivo);
+        EliminarArchivo eliminarArchivo = new EliminarArchivo(driver);
 
-        iniciarSesion(eliminarArchivo);
+        // Ya no necesitamos abrir URL ni hacer login, BaseTest ya lo hizo
 
         accederMenu(eliminarArchivo);
-
         eliminarNormativa(eliminarArchivo);
-
-        cerrarEmanager(eliminarArchivo);
     }
 
     // Métodos comunes reutilizables con pasos para Allure
-
-    @Step("Abrir la URL del módulo Emanager")
-    private void abrirUrl(SubirArchivo subirArchivo) {
-        subirArchivo.abrirUrl();
-        Allure.step("Se abrió la URL de Emanager");
-    }
-
-    @Step("Abrir la URL del módulo Emanager")
-    private void abrirUrl(ValidarArchivo validarArchivo) {
-        validarArchivo.abrirUrl();
-        Allure.step("Se abrió la URL de Emanager");
-    }
-
-    @Step("Abrir la URL del módulo Emanager")
-    private void abrirUrl(EliminarArchivo eliminarArchivo) {
-        eliminarArchivo.abrirUrl();
-        Allure.step("Se abrió la URL de Emanager");
-    }
-
-    @Step("Iniciar sesión en Emanager")
-    private void iniciarSesion(SubirArchivo subirArchivo) {
-        subirArchivo.login(testData.credentials.emanager.user, testData.credentials.emanager.password);
-        Allure.step("Se inició sesión con usuario: " + testData.credentials.emanager.user);
-    }
-
-    @Step("Iniciar sesión en Emanager")
-    private void iniciarSesion(ValidarArchivo validarArchivo) {
-        validarArchivo.login(testData.credentials.emanager.user, testData.credentials.emanager.password);
-        Allure.step("Se inició sesión con usuario: " + testData.credentials.emanager.user);
-    }
-
-    @Step("Iniciar sesión en Emanager")
-    private void iniciarSesion(EliminarArchivo eliminarArchivo) {
-        eliminarArchivo.login(testData.credentials.emanager.user, testData.credentials.emanager.password);
-        Allure.step("Se inició sesión con usuario: " + testData.credentials.emanager.user);
-    }
 
     @Step("Acceder al menú del módulo Emanager")
     private void accederMenu(SubirArchivo subirArchivo) {
@@ -168,21 +123,14 @@ public class TestFlujoEmanager {
         Allure.step("Se eliminó el archivo correctamente");
     }
 
-    @Step("Cerrar el módulo Emanager")
-    private void cerrarEmanager(SubirArchivo subirArchivo) {
-        subirArchivo.close();
-        Allure.step("Se cerró el módulo Emanager");
-    }
+    @AfterAll
+    public static void finalizarFlujo() {
+        // Desactivar el flujo continuo
+        endContinuousFlow();
 
-    @Step("Cerrar el módulo Emanager")
-    private void cerrarEmanager(ValidarArchivo validarArchivo) {
-        validarArchivo.close();
-        Allure.step("Se cerró el módulo Emanager");
-    }
-
-    @Step("Cerrar el módulo Emanager")
-    private void cerrarEmanager(EliminarArchivo eliminarArchivo) {
-        eliminarArchivo.close();
-        Allure.step("Se cerró el módulo Emanager");
+        // Si hay una instancia actual, forzar cierre explícito del navegador
+        if (currentTestInstance != null) {
+            currentTestInstance.forceCloseDriver();
+        }
     }
 }

@@ -1,34 +1,38 @@
 package tests.emanager360;
 
-import cl.aach.models.TestData;
+import cl.aach.annotations.UseLoginStrategy;
 import cl.aach.pages.emanager360.EliminarNorma;
 import cl.aach.pages.emanager360.AgregarNorma;
 import cl.aach.pages.emanager360.ModificarNorma;
 import cl.aach.utils.DateUtils;
-import cl.aach.utils.TestDataLoader;
+import cl.aach.utils.LoginStrategyFactory;
 import io.qameta.allure.*;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
 import tests.BaseTest;
 
+/**
+ * Test para el flujo completo de gestión de normativas en eManager 360.
+ * Utiliza la estrategia de login de EMANAGER.
+ */
 @Epic("EMANAGER BORRADOR 360")
 @Feature("Gestión de Normativas")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@ExtendWith(BaseTest.TestFailureWatcher.class) // Se extiende con el watcher para capturas
-public class TestFlujo360 {
+@UseLoginStrategy(LoginStrategyFactory.LoginType.EMANAGER) // Especificamos explícitamente la estrategia de login
+public class TestFlujo360 extends BaseTest {
 
-    private static TestData testData;
-
-    public TestFlujo360() {
-        if (testData == null) {
-            testData = TestDataLoader.loadDefaultTestData();
-        }
-    }
+    private static TestFlujo360 currentTestInstance;
 
     @BeforeAll
-    public static void setUp() {
-        // Cargar datos de prueba usando TestDataLoader
-        testData = TestDataLoader.loadDefaultTestData();
+    public static void iniciarFlujo() {
+        // Activamos el flujo continuo para mantener el WebDriver entre tests
+        startContinuousFlow();
+    }
+
+    @BeforeEach
+    public void saveInstance() {
+        // Guardar la instancia actual y asegurar el login
+        currentTestInstance = this;
+        performLogin(); // Realizamos el login explícitamente
     }
 
     @Test
@@ -36,18 +40,14 @@ public class TestFlujo360 {
     @Description("Agregar una nueva normativa como borrador en EMANAGER BORRADOR 360.")
     @Severity(SeverityLevel.NORMAL)
     public void BORRADOR_360_Agregar_Normativa() {
-        AgregarNorma agregarNorma = new AgregarNorma();
-        abrirUrl(agregarNorma);
+        AgregarNorma agregarNorma = new AgregarNorma(driver);
 
-        iniciarSesion(agregarNorma);
-
+        // Ya no necesitamos abrir URL ni hacer login, BaseTest ya lo hizo
         accederMenu(agregarNorma);
-
         agregarNuevaNormativa(agregarNorma);
-
         validarResultadoNormativa(agregarNorma);
 
-        cerrarEmanager(agregarNorma);
+        // No cerramos el navegador, BaseTest lo hará en tearDown
     }
 
     @Test
@@ -55,16 +55,13 @@ public class TestFlujo360 {
     @Description("Modificar una normativa existente en EMANAGER BORRADOR 360.")
     @Severity(SeverityLevel.NORMAL)
     public void BORRADOR_360_Modificar_Normativas() {
-        ModificarNorma modificarNorma = new ModificarNorma();
-        abrirUrl(modificarNorma);
+        ModificarNorma modificarNorma = new ModificarNorma(driver);
 
-        iniciarSesion(modificarNorma);
-
+        // Ya no necesitamos abrir URL ni hacer login, BaseTest ya lo hizo
         accederMenu(modificarNorma);
-
         modificarNormativa(modificarNorma);
 
-        cerrarEmanager(modificarNorma);
+        // No cerramos el navegador, BaseTest lo hará en tearDown
     }
 
     @Test
@@ -72,55 +69,16 @@ public class TestFlujo360 {
     @Description("Eliminar una normativa en EMANAGER BORRADOR 360.")
     @Severity(SeverityLevel.NORMAL)
     public void BORRADOR_360_Eliminar_Normativas() {
-        EliminarNorma eliminarNorma = new EliminarNorma();
-        abrirUrl(eliminarNorma);
+        EliminarNorma eliminarNorma = new EliminarNorma(driver);
 
-        iniciarSesion(eliminarNorma);
-
+        // Ya no necesitamos abrir URL ni hacer login, BaseTest ya lo hizo
         accederMenu(eliminarNorma);
-
         eliminarNormativa(eliminarNorma);
 
-        cerrarEmanager(eliminarNorma);
+        // No cerramos el navegador, BaseTest lo hará en tearDown
     }
 
     // Métodos comunes reutilizables con pasos decorados para Allure
-
-    @Step("Abrir la URL de EMANAGER BORRADOR 360")
-    private void abrirUrl(AgregarNorma agregarNorma) {
-        agregarNorma.abrirUrl();
-        Allure.step("Se abrió la URL del módulo EMANAGER BORRADOR 360");
-    }
-
-    @Step("Abrir la URL de EMANAGER BORRADOR 360")
-    private void abrirUrl(ModificarNorma modificarNorma) {
-        modificarNorma.abrirUrl();
-        Allure.step("Se abrió la URL del módulo EMANAGER BORRADOR 360");
-    }
-
-    @Step("Abrir la URL de EMANAGER BORRADOR 360")
-    private void abrirUrl(EliminarNorma eliminarNorma) {
-        eliminarNorma.abrirUrl();
-        Allure.step("Se abrió la URL del módulo EMANAGER BORRADOR 360");
-    }
-
-    @Step("Iniciar sesión en EMANAGER BORRADOR 360")
-    private void iniciarSesion(AgregarNorma agregarNorma) {
-        agregarNorma.login(testData.credentials.emanager.user, testData.credentials.emanager.password);
-        Allure.step("Se inició sesión con usuario: " + testData.credentials.emanager.user);
-    }
-
-    @Step("Iniciar sesión en EMANAGER BORRADOR 360")
-    private void iniciarSesion(ModificarNorma modificarNorma) {
-        modificarNorma.login(testData.credentials.emanager.user, testData.credentials.emanager.password);
-        Allure.step("Se inició sesión con usuario: " + testData.credentials.emanager.user);
-    }
-
-    @Step("Iniciar sesión en EMANAGER BORRADOR 360")
-    private void iniciarSesion(EliminarNorma eliminarNorma) {
-        eliminarNorma.login(testData.credentials.emanager.user, testData.credentials.emanager.password);
-        Allure.step("Se inició sesión con usuario: " + testData.credentials.emanager.user);
-    }
 
     @Step("Acceder al menú principal del módulo EMANAGER BORRADOR 360")
     private void accederMenu(AgregarNorma agregarNorma) {
@@ -162,7 +120,7 @@ public class TestFlujo360 {
     @Step("Modificar una normativa automáticamente")
     private void modificarNormativa(ModificarNorma modificarNorma) {
         boolean modificacionExitosa = modificarNorma.modificarNormativaAutomatica("Cerrado");
-        Allure.step("Se intentó modificar la normativa automáticamente. Modificación exitosa ");
+        Allure.step("Se intentó modificar la normativa automáticamente. Modificación exitosa: " + modificacionExitosa);
     }
 
     @Step("Eliminar una normativa existente")
@@ -171,21 +129,14 @@ public class TestFlujo360 {
         Allure.step("Se eliminó la normativa correctamente.");
     }
 
-    @Step("Cerrar el módulo EMANAGER BORRADOR 360")
-    private void cerrarEmanager(AgregarNorma agregarNorma) {
-        agregarNorma.close();
-        Allure.step("Se cerró el módulo EMANAGER BORRADOR 360");
-    }
+    @AfterAll
+    public static void finalizarFlujo() {
+        // Desactivar el flujo continuo
+        endContinuousFlow();
 
-    @Step("Cerrar el módulo EMANAGER BORRADOR 360")
-    private void cerrarEmanager(ModificarNorma modificarNorma) {
-        modificarNorma.close();
-        Allure.step("Se cerró el módulo EMANAGER BORRADOR 360");
-    }
-
-    @Step("Cerrar el módulo EMANAGER BORRADOR 360")
-    private void cerrarEmanager(EliminarNorma eliminarNorma) {
-        eliminarNorma.close();
-        Allure.step("Se cerró el módulo EMANAGER BORRADOR 360");
+        // Si hay una instancia actual, forzar cierre explícito del navegador
+        if (currentTestInstance != null) {
+            currentTestInstance.forceCloseDriver();
+        }
     }
 }
